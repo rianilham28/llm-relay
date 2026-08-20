@@ -16,7 +16,9 @@ use hyper::header::{
 };
 use hyper::{Method, Request, Response, StatusCode};
 
-use crate::{BoxError, ResBody, State, convert, error, fail, identity, json_ct, json_response, now_millis};
+use crate::{
+    BoxError, ResBody, State, convert, error, fail, identity, json_ct, json_response, now_millis,
+};
 
 const DONE_FRAME: &[u8] = b"data: [DONE]\n\n";
 const RETRY_AFTER_429_SECS: &str = "30";
@@ -83,7 +85,11 @@ pub async fn chat(req: Request<Incoming>, state: &State) -> Response<ResBody> {
         .headers
         .iter()
         .filter(|(k, _)| is_caller_header(k.as_str()))
-        .filter_map(|(k, v)| v.to_str().ok().map(|v| (k.as_str().to_string(), v.to_string())))
+        .filter_map(|(k, v)| {
+            v.to_str()
+                .ok()
+                .map(|v| (k.as_str().to_string(), v.to_string()))
+        })
         .collect();
 
     // Buffered, not streamed, because a retry has to be able to send it again.
@@ -218,11 +224,17 @@ fn relay_sse(upstream: Incoming, model: String) -> Response<ResBody> {
     // Disambiguated: `StreamBody` satisfies both `BodyExt` and `StreamExt`.
     let mut resp = Response::new(BodyExt::boxed(StreamBody::new(frames)));
     let headers = resp.headers_mut();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/event-stream; charset=utf-8"));
+    headers.insert(
+        CONTENT_TYPE,
+        HeaderValue::from_static("text/event-stream; charset=utf-8"),
+    );
     headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     // Reverse proxies that buffer by default would hold frames until the
     // stream ends, which is the one thing a token stream cannot survive.
-    headers.insert(HeaderName::from_static("x-accel-buffering"), HeaderValue::from_static("no"));
+    headers.insert(
+        HeaderName::from_static("x-accel-buffering"),
+        HeaderValue::from_static("no"),
+    );
     resp
 }
 
@@ -382,8 +394,13 @@ fn serve_error(e: ErrorEnvelope) -> Response<ResBody> {
 
 /// A request body the relay refused to read: over the cap, or broken mid-read.
 fn body_error(e: &BoxError, max_body: usize) -> Response<ResBody> {
-    if e.downcast_ref::<http_body_util::LengthLimitError>().is_some() {
-        fail(413, &format!("request body exceeds the {max_body} byte limit"))
+    if e.downcast_ref::<http_body_util::LengthLimitError>()
+        .is_some()
+    {
+        fail(
+            413,
+            &format!("request body exceeds the {max_body} byte limit"),
+        )
     } else {
         fail(400, &format!("could not read request body: {e}"))
     }
@@ -416,7 +433,9 @@ pub async fn prewarm(state: &State) {
     match state.client.request(req).await {
         Ok(resp) => {
             let status = resp.status();
-            let _ = Limited::new(resp.into_body(), MAX_ERROR_BODY).collect().await;
+            let _ = Limited::new(resp.into_body(), MAX_ERROR_BODY)
+                .collect()
+                .await;
             eprintln!(
                 "upstream connection warmed in {}ms (probe answered {status})",
                 started.elapsed().as_millis()
@@ -512,7 +531,10 @@ mod tests {
         assert_eq!(v["id"], "router-1");
         assert_eq!(v["model"], "test-model");
         assert_eq!(v["choices"][0]["finish_reason"], "length");
-        assert_eq!(v["error"]["message"], "upstream stream failed: closed mid-frame");
+        assert_eq!(
+            v["error"]["message"],
+            "upstream stream failed: closed mid-frame"
+        );
     }
 
     #[tokio::test]
@@ -522,16 +544,27 @@ mod tests {
             Err("connection reset"),
         ])
         .await;
-        let payload = out.last().unwrap().strip_prefix("data: ").unwrap().trim_end();
+        let payload = out
+            .last()
+            .unwrap()
+            .strip_prefix("data: ")
+            .unwrap()
+            .trim_end();
         let v: Value = serde_json::from_str(payload).expect("valid JSON");
         assert_eq!(v["id"], "router-2");
-        assert_eq!(v["error"]["message"], "upstream stream failed: connection reset");
+        assert_eq!(
+            v["error"]["message"],
+            "upstream stream failed: connection reset"
+        );
     }
 
     #[tokio::test]
     async fn comments_and_non_data_events_pass_through_untouched() {
         let out = relayed(vec![Ok(b": ping\n\nevent: open\n\ndata: [DONE]\n\n")]).await;
-        assert_eq!(out, vec![": ping\n\n", "event: open\n\n", "data: [DONE]\n\n"]);
+        assert_eq!(
+            out,
+            vec![": ping\n\n", "event: open\n\n", "data: [DONE]\n\n"]
+        );
     }
 
     #[tokio::test]
@@ -543,7 +576,12 @@ mod tests {
             Ok(b"data: partial"),
         ])
         .await;
-        let payload = out.last().unwrap().strip_prefix("data: ").unwrap().trim_end();
+        let payload = out
+            .last()
+            .unwrap()
+            .strip_prefix("data: ")
+            .unwrap()
+            .trim_end();
         let v: Value = serde_json::from_str(payload).unwrap();
         assert_eq!(v["id"], "llm-relay-0");
     }

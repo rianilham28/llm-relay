@@ -262,9 +262,21 @@ mod tests {
             b"message"
         ));
         // Present but not a string, absent, and not nested under `error`.
-        assert!(!has_nested_string(br#"{"error":{"message":7}}"#, b"error", b"message"));
-        assert!(!has_nested_string(br#"{"error":{"code":1}}"#, b"error", b"message"));
-        assert!(!has_nested_string(br#"{"message":"bad"}"#, b"error", b"message"));
+        assert!(!has_nested_string(
+            br#"{"error":{"message":7}}"#,
+            b"error",
+            b"message"
+        ));
+        assert!(!has_nested_string(
+            br#"{"error":{"code":1}}"#,
+            b"error",
+            b"message"
+        ));
+        assert!(!has_nested_string(
+            br#"{"message":"bad"}"#,
+            b"error",
+            b"message"
+        ));
         assert!(!has_nested_string(b"not json", b"error", b"message"));
     }
 
@@ -284,7 +296,10 @@ mod tests {
         // A chunk as the upstream actually sends it, keys in its own order.
         let frame = br#"{"id":"router-18dc9bf3","object":"chat.completion.chunk","created":1787106976,"model":"deepseek-v4-flash-free","choices":[{"index":0,"finish_reason":null,"logprobs":null,"delta":{"role":"assistant","content":"","reasoning_content":null}}]}"#;
         assert_eq!(top_level_str(frame, b"id"), Some("router-18dc9bf3"));
-        assert_eq!(top_level_str(frame, b"model"), Some("deepseek-v4-flash-free"));
+        assert_eq!(
+            top_level_str(frame, b"model"),
+            Some("deepseek-v4-flash-free")
+        );
     }
 
     #[test]

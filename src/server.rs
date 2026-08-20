@@ -77,7 +77,10 @@ pub async fn serve(state: Arc<State>, addr: SocketAddr) -> Result<(), BoxError> 
         }
     }
 
-    eprintln!("shutdown signal received; draining for up to {}s", SHUTDOWN_GRACE.as_secs());
+    eprintln!(
+        "shutdown signal received; draining for up to {}s",
+        SHUTDOWN_GRACE.as_secs()
+    );
     tokio::select! {
         _ = graceful.shutdown() => eprintln!("all connections drained"),
         _ = tokio::time::sleep(SHUTDOWN_GRACE) => {
@@ -138,6 +141,10 @@ pub fn healthcheck(port: u16) -> Result<(), BoxError> {
     if buf[..WANT].starts_with(b"HTTP/1.1 200") {
         Ok(())
     } else {
-        Err(format!("/healthz answered: {}", String::from_utf8_lossy(&buf[..have]).trim()).into())
+        Err(format!(
+            "/healthz answered: {}",
+            String::from_utf8_lossy(&buf[..have]).trim()
+        )
+        .into())
     }
 }

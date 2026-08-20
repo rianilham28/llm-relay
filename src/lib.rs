@@ -222,12 +222,21 @@ const INDEX_BODY: &str = concat!(
     r#"","endpoints":["POST /v1/chat/completions","GET /egress","GET /healthz"]}"#
 );
 
-pub async fn route(req: Request<Incoming>, state: Arc<State>) -> Result<Response<ResBody>, Infallible> {
+pub async fn route(
+    req: Request<Incoming>,
+    state: Arc<State>,
+) -> Result<Response<ResBody>, Infallible> {
     let resp = match (req.method(), req.uri().path()) {
-        (&Method::GET, "/healthz") => json_response(StatusCode::OK, Bytes::from_static(HEALTHZ_BODY.as_bytes())),
+        (&Method::GET, "/healthz") => {
+            json_response(StatusCode::OK, Bytes::from_static(HEALTHZ_BODY.as_bytes()))
+        }
         (&Method::GET, "/egress") => egress::egress(&state).await,
-        (&Method::GET, "/") => json_response(StatusCode::OK, Bytes::from_static(INDEX_BODY.as_bytes())),
-        (&Method::POST, "/v1/chat/completions" | "/chat/completions") => relay::chat(req, &state).await,
+        (&Method::GET, "/") => {
+            json_response(StatusCode::OK, Bytes::from_static(INDEX_BODY.as_bytes()))
+        }
+        (&Method::POST, "/v1/chat/completions" | "/chat/completions") => {
+            relay::chat(req, &state).await
+        }
         // A path that exists but not for this method: saying "unknown endpoint"
         // would send the caller looking for the wrong problem.
         (_, "/v1/chat/completions" | "/chat/completions") => not_allowed("POST"),
@@ -255,7 +264,8 @@ pub(crate) fn json_response(status: StatusCode, body: Bytes) -> Response<ResBody
 /// 405 always names the methods that would have worked, as RFC 9110 requires.
 fn not_allowed(allow: &'static str) -> Response<ResBody> {
     let mut resp = fail(405, &format!("method not allowed; use {allow}"));
-    resp.headers_mut().insert(ALLOW, HeaderValue::from_static(allow));
+    resp.headers_mut()
+        .insert(ALLOW, HeaderValue::from_static(allow));
     resp
 }
 

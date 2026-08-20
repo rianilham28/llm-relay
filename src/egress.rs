@@ -76,7 +76,10 @@ fn write_member(out: &mut String, name: &str, result: &Result<IpAddr, String>) {
 async fn probe(state: &State, uri: &Uri, want_v4: bool) -> Result<IpAddr, String> {
     let family = if want_v4 { "IPv4" } else { "IPv6" };
     match tokio::time::timeout(PROBE_TIMEOUT, fetch_ip(state, uri)).await {
-        Err(_) => Err(format!("{family} probe timed out after {}s", PROBE_TIMEOUT.as_secs())),
+        Err(_) => Err(format!(
+            "{family} probe timed out after {}s",
+            PROBE_TIMEOUT.as_secs()
+        )),
         Ok(Err(e)) => Err(e.to_string()),
         // Belt and braces: reporting an address as a family it is not would be
         // worse than reporting nothing.
@@ -120,11 +123,7 @@ mod tests {
         let mut out = String::from("{");
         write_member(&mut out, "ipv4", &Ok("203.0.113.9".parse().unwrap()));
         out.push(',');
-        write_member(
-            &mut out,
-            "ipv6",
-            &Err(r#"","injected":{"x":"#.to_string()),
-        );
+        write_member(&mut out, "ipv6", &Err(r#"","injected":{"x":"#.to_string()));
         out.push('}');
 
         let v: Value = serde_json::from_str(&out).expect("valid JSON");
