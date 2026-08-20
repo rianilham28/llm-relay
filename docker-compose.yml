@@ -1,0 +1,21 @@
+services:
+  relay:
+    build: .
+    image: llm-relay:latest
+    container_name: llm-relay
+    ports:
+      - "8787:8787"
+    environment:
+      # The only variable the relay reads; everything else is a tuned constant.
+      PORT: "8787"
+    restart: unless-stopped
+    # Above the relay's own 25s drain, so a stop never SIGKILLs mid-stream.
+    stop_grace_period: 30s
+    # The relay writes no files and needs no privileges.
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535

@@ -1,0 +1,7 @@
+# The tuned build needs nightly: `.cargo/config.toml` sets build-std and two -Z
+# flags, and on stable every cargo command fails with "the option 'Z' is only
+# accepted on the nightly compiler". Pinned to a date so a nightly regression
+# cannot land in a rebuild on its own.
+[toolchain]
+channel = "nightly-2026-08-17"
+components = ["rust-src", "llvm-tools", "clippy", "rustfmt"]

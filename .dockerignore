@@ -1,0 +1,12 @@
+# Everything the build does not read. Keeping this tight is what makes the
+# cargo-chef dependency layer actually stay cached.
+target
+node_modules
+build
+.wrangler
+.git
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
+*.md
