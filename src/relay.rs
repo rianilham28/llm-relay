@@ -1,11 +1,10 @@
 //! Slim relay to the upstream chat-completions endpoint. No egress lanes, no admission
-//! control, no retry pool: one pooled fetch, a single retry on retryable
-//! outcomes, and the upstream's own bytes on the way back. The relay does not
+//! control, no retry pool: one pooled fetch, a single immediate retry on
+//! retryable outcomes, and the upstream's own bytes on the way back. The relay does not
 //! rewrite wire content in either direction — a buffered answer is forwarded
 //! without ever being collected, and an SSE stream is relayed frame by frame.
 
 use std::sync::LazyLock;
-use std::time::Duration;
 
 use bytes::{Bytes, BytesMut};
 use futures_util::{Stream, StreamExt, TryStreamExt};
@@ -20,7 +19,6 @@ use hyper::{Method, Request, Response, StatusCode};
 use crate::{BoxError, ResBody, State, convert, error, fail, identity, json_ct, json_response, now_millis};
 
 const DONE_FRAME: &[u8] = b"data: [DONE]\n\n";
-const RETRY_DELAY_MS: u64 = 750;
 const RETRY_AFTER_429_SECS: &str = "30";
 /// An upstream error page is read only to be quoted into an envelope, and the
 /// message is truncated to 500 chars anyway — so it is never worth buffering
@@ -100,9 +98,6 @@ pub async fn chat(req: Request<Incoming>, state: &State) -> Response<ResBody> {
     let mut last: Option<ErrorEnvelope> = None;
     let max_retries = state.cfg.max_retries;
     for attempt in 0..=max_retries {
-        if attempt > 0 {
-            tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MS * attempt as u64)).await;
-        }
         // Cloning `Bytes` bumps a refcount; the body is never copied per retry.
         let outbound = match build_request(state, &headers, body.clone()) {
             Ok(req) => req,
